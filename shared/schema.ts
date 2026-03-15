@@ -16,7 +16,7 @@ import { z } from "zod";
 // Re-export auth models from models/auth.ts
 export * from "./models/auth";
 
-// Blog posts
+// Blog posts with performance indexes
 export const blogPosts = pgTable("blog_posts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
@@ -24,16 +24,20 @@ export const blogPosts = pgTable("blog_posts", {
   excerpt: text("excerpt").notNull(),
   content: text("content").notNull(),
   featuredImage: text("featured_image"),
-  category: text("category").notNull(), // MEL, Programming, Career, Networking
+  category: text("category").notNull(),
   tags: text("tags").array().default(sql`ARRAY[]::text[]`),
   isPremium: boolean("is_premium").default(false),
-  isAdmin: boolean("is_admin").default(false),
   isPublished: boolean("is_published").default(true),
   readTimeMinutes: integer("read_time_minutes").default(5),
   publishedAt: timestamp("published_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  categoryIdx: index("blog_category_idx").on(table.category),
+  publishedIdx: index("blog_published_idx").on(table.isPublished),
+  publishedAtIdx: index("blog_published_at_idx").on(table.publishedAt),
+  slugIdx: index("blog_slug_idx").on(table.slug),
+}));
 
 export const insertBlogPostSchema = createInsertSchema(blogPosts).omit({
   id: true,
@@ -45,7 +49,7 @@ export const insertBlogPostSchema = createInsertSchema(blogPosts).omit({
 export type InsertBlogPost = z.infer<typeof insertBlogPostSchema>;
 export type BlogPost = typeof blogPosts.$inferSelect;
 
-// Portfolio projects
+// Portfolio projects with performance indexes
 export const portfolioProjects = pgTable("portfolio_projects", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
@@ -54,7 +58,7 @@ export const portfolioProjects = pgTable("portfolio_projects", {
   challenge: text("challenge"),
   solution: text("solution"),
   outcome: text("outcome"),
-  category: text("category").notNull(), // MEL Systems, ICT Infrastructure, Web Development, Data Analytics
+  category: text("category").notNull(),
   techStack: text("tech_stack").array().default(sql`ARRAY[]::text[]`),
   featuredImage: text("featured_image"),
   images: text("images").array().default(sql`ARRAY[]::text[]`),
@@ -64,7 +68,12 @@ export const portfolioProjects = pgTable("portfolio_projects", {
   order: integer("order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  categoryIdx: index("portfolio_category_idx").on(table.category),
+  featuredIdx: index("portfolio_featured_idx").on(table.featured),
+  slugIdx: index("portfolio_slug_idx").on(table.slug),
+  orderIdx: index("portfolio_order_idx").on(table.order),
+}));
 
 export const insertPortfolioProjectSchema = createInsertSchema(portfolioProjects).omit({
   id: true,
@@ -146,3 +155,52 @@ export const insertBlogCommentSchema = createInsertSchema(blogComments).omit({
 });
 
 export type BlogComment = typeof blogComments.$inferSelect;
+
+// Email Templates
+export const emailTemplates = pgTable("email_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  subject: text("subject").notNull(),
+  htmlContent: text("html_content").notNull(),
+  textContent: text("text_content"),
+  templateImage: text("template_image"),
+  marketingTips: text("marketing_tips"),
+  category: text("category"), // weekly, monthly, promotional
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertEmailTemplateSchema = createInsertSchema(emailTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmailTemplate = z.infer<typeof insertEmailTemplateSchema>;
+export type EmailTemplate = typeof emailTemplates.$inferSelect;
+
+// External Posts (for embedding external content)
+export const externalPosts = pgTable("external_posts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  source: text("source").notNull(), // LinkedIn, Medium, Dev.to, etc
+  url: text("url").notNull(),
+  excerpt: text("excerpt"),
+  featuredImage: text("featured_image"),
+  publishedAt: timestamp("published_at"),
+  category: text("category"), // MEL, Programming, Career
+  embedCode: text("embed_code"), // For embedded widgets
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertExternalPostSchema = createInsertSchema(externalPosts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertExternalPost = z.infer<typeof insertExternalPostSchema>;
+export type ExternalPost = typeof externalPosts.$inferSelect;
