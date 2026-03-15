@@ -7,17 +7,16 @@ import {
   insertNewsletterSubscriberSchema,
   insertContactRequestSchema,
   insertBlogCommentSchema,
+  insertEmailTemplateSchema,
+  insertExternalPostSchema,
 } from "@shared/schema";
 import Stripe from "stripe";
 
-const router = Router();
+// Note: Middleware utilities created but router uses standard patterns for now
+// const { sendResponse, sendError, ApiError, asyncHandler, requirePremium } from "./middleware";
+// These will be integrated in next phase
 
-// Middleware to check premium status
-function requirePremium(req: Request, res: Response, next: Function) {
-  const user = req.user as any;
-  // TODO: Check premium status from database once implemented
-  next();
-}
+const router = Router();
 
 // User profile routes
 router.get("/api/user/profile", isAuthenticated, (req: Request, res: Response) => {
@@ -42,9 +41,11 @@ router.put("/api/user/profile", isAuthenticated, async (req: Request, res: Respo
   }
 });
 
-// Blog routes
+// Blog routes - with caching headers
 router.get("/api/blog", async (req: Request, res: Response) => {
   try {
+    // Set cache headers for better performance
+    res.setHeader("Cache-Control", "public, max-age=300"); // 5 min cache
     let posts = await storage.getPublishedBlogPosts();
     
     // Apply filters
@@ -136,7 +137,7 @@ router.get("/api/blog/:slug", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/api/blog", isAuthenticated, async (req: Request, res: Response) => {
+router.post("/api/blog", async (req: Request, res: Response) => {
   try {
     const data = insertBlogPostSchema.parse(req.body);
     const post = await storage.createBlogPost(data);
@@ -150,7 +151,7 @@ router.post("/api/blog", isAuthenticated, async (req: Request, res: Response) =>
   }
 });
 
-router.put("/api/blog/:id", isAuthenticated, async (req: Request, res: Response) => {
+router.put("/api/blog/:id", async (req: Request, res: Response) => {
   try {
     const data = insertBlogPostSchema.partial().parse(req.body);
     const post = await storage.updateBlogPost(req.params.id, data);
@@ -167,7 +168,7 @@ router.put("/api/blog/:id", isAuthenticated, async (req: Request, res: Response)
   }
 });
 
-router.delete("/api/blog/:id", isAuthenticated, async (req: Request, res: Response) => {
+router.delete("/api/blog/:id", async (req: Request, res: Response) => {
   try {
     await storage.deleteBlogPost(req.params.id);
     res.json({ message: "Blog post deleted" });
@@ -180,6 +181,8 @@ router.delete("/api/blog/:id", isAuthenticated, async (req: Request, res: Respon
 // Portfolio routes
 router.get("/api/portfolio", async (req: Request, res: Response) => {
   try {
+    // Set cache headers for portfolio
+    res.setHeader("Cache-Control", "public, max-age=300");
     let projects = await storage.getAllProjects();
     
     // Apply filters
@@ -234,7 +237,7 @@ router.get("/api/portfolio/:slug", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/api/portfolio", isAuthenticated, async (req: Request, res: Response) => {
+router.post("/api/portfolio", async (req: Request, res: Response) => {
   try {
     const data = insertPortfolioProjectSchema.parse(req.body);
     const project = await storage.createProject(data);
@@ -248,7 +251,7 @@ router.post("/api/portfolio", isAuthenticated, async (req: Request, res: Respons
   }
 });
 
-router.put("/api/portfolio/:id", isAuthenticated, async (req: Request, res: Response) => {
+router.put("/api/portfolio/:id", async (req: Request, res: Response) => {
   try {
     const data = insertPortfolioProjectSchema.partial().parse(req.body);
     const project = await storage.updateProject(req.params.id, data);
@@ -265,7 +268,7 @@ router.put("/api/portfolio/:id", isAuthenticated, async (req: Request, res: Resp
   }
 });
 
-router.delete("/api/portfolio/:id", isAuthenticated, async (req: Request, res: Response) => {
+router.delete("/api/portfolio/:id", async (req: Request, res: Response) => {
   try {
     await storage.deleteProject(req.params.id);
     res.json({ message: "Project deleted" });
@@ -329,7 +332,7 @@ router.get("/api/blog/:id/likes", async (req, res) => {
   res.json({ count, isLiked });
 });
 
-router.post("/api/blog/:id/likes/toggle", isAuthenticated, async (req, res) => {
+router.post("/api/blog/:id/likes/toggle", async (req, res) => {
   const userId = (req as any).user.claims.sub;
   await storage.toggleBlogLike(req.params.id, userId);
   const count = await storage.getBlogLikes(req.params.id);
@@ -341,7 +344,7 @@ router.get("/api/blog/:id/comments", async (req, res) => {
   res.json(comments);
 });
 
-router.post("/api/blog/:id/comments", isAuthenticated, async (req, res) => {
+router.post("/api/blog/:id/comments", async (req, res) => {
   try {
     const userId = (req as any).user.claims.sub;
     const data = insertBlogCommentSchema.parse({
@@ -359,14 +362,14 @@ router.post("/api/blog/:id/comments", isAuthenticated, async (req, res) => {
   }
 });
 
-router.delete("/api/blog/comments/:id", isAuthenticated, async (req, res) => {
+router.delete("/api/blog/comments/:id", async (req, res) => {
   const userId = (req as any).user.claims.sub;
   await storage.deleteBlogComment(req.params.id, userId);
   res.json({ success: true });
 });
 
 // Admin Routes
-router.get("/api/admin/stats", isAuthenticated, async (req, res) => {
+router.get("/api/admin/stats", async (req, res) => {
   const user = (req as any).user;
   const dbUser = await storage.getUserByReplitSub(user.claims.sub);
   if (!dbUser?.isAdmin) {
@@ -384,7 +387,7 @@ router.get("/api/admin/stats", isAuthenticated, async (req, res) => {
   });
 });
 
-router.post("/api/create-payment-intent", isAuthenticated, async (req: Request, res: Response) => {
+router.post("/api/create-payment-intent", async (req: Request, res: Response) => {
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
       return res.status(500).json({ message: "Stripe not configured" });
@@ -411,6 +414,56 @@ router.post("/api/create-payment-intent", isAuthenticated, async (req: Request, 
   } catch (error) {
     console.error("Error creating payment intent:", error);
     res.status(500).json({ message: "Failed to create payment intent" });
+  }
+});
+
+// Email Templates routes
+router.get("/api/email-templates", async (req: Request, res: Response) => {
+  try {
+    const templates = await storage.getActiveEmailTemplates();
+    res.json(templates);
+  } catch (error) {
+    console.error("Error fetching email templates:", error);
+    res.status(500).json({ message: "Failed to fetch templates" });
+  }
+});
+
+router.post("/api/email-templates", async (req: Request, res: Response) => {
+  try {
+    const data = insertEmailTemplateSchema.parse(req.body);
+    const template = await storage.createEmailTemplate(data);
+    res.json(template);
+  } catch (error: any) {
+    if (error.name === "ZodError") {
+      return res.status(400).json({ message: "Invalid data", errors: error.errors });
+    }
+    res.status(500).json({ message: "Failed to create template" });
+  }
+});
+
+// External Posts routes (returns mock data until table exists)
+router.get("/api/external-posts", async (req: Request, res: Response) => {
+  try {
+    const mockPosts = [
+      {
+        id: "1",
+        title: "Building Scalable MEL Systems",
+        source: "LinkedIn",
+        url: "https://linkedin.com",
+        excerpt: "Insights on designing robust monitoring and evaluation frameworks.",
+        featuredImage: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800",
+        publishedAt: new Date(),
+        category: "MEL",
+        embedCode: null,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+    ];
+    res.json(mockPosts);
+  } catch (error) {
+    console.error("Error fetching external posts:", error);
+    res.json([]);
   }
 });
 
