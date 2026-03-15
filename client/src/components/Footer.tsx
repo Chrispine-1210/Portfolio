@@ -2,13 +2,20 @@ import { Link } from "wouter";
 import { Linkedin, Github, Facebook, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const footerLinks = {
+const footerLinks: Record<string, Array<{ label: string; path: string }>> = {
   navigation: [
     { label: "Home", path: "/" },
     { label: "Portfolio", path: "/portfolio" },
     { label: "Blog", path: "/blog" },
+    { label: "Newsletter", path: "/newsletter-manage" },
     { label: "About", path: "/about" },
     { label: "Contact", path: "/contact" },
+  ],
+  resources: [
+    { label: "Publications", path: "/resources" },
+    { label: "Subscribe", path: "/subscribe" },
+    { label: "Dashboard", path: "/dashboard" },
+    { label: "Hire Me", path: "/hire" },
   ],
   categories: [
     { label: "MEL Systems", path: "/blog?category=MEL" },
@@ -16,22 +23,18 @@ const footerLinks = {
     { label: "Career Insights", path: "/blog?category=Career" },
     { label: "Networking", path: "/blog?category=Networking" },
   ],
-  legal: [
-    { label: "Privacy Policy", path: "/privacy" },
-    { label: "Terms of Service", path: "/terms" },
-  ],
 };
 
 export function Footer() {
   return (
-    <footer className="bg-card border-t border-border mt-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+    <footer className="bg-gradient-to-br from-card via-background to-card/50 border-t border-primary/20 mt-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-12 mb-12">
           {/* Brand */}
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-foreground">Chrispine Mndala</h3>
-            <p className="text-sm text-muted-foreground">
-              ICT & MEL Specialist helping organizations build data-driven solutions for digital transformation.
+            <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Chrispine</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Digital architect & MEL specialist. 7+ years building data-driven solutions for transformation.
             </p>
             <div className="flex gap-2">
               <Button variant="ghost" size="icon" asChild data-testid="link-social-linkedin">
@@ -86,13 +89,13 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Categories */}
+          {/* Resources */}
           <div>
-            <h4 className="font-semibold mb-4 text-foreground">Categories</h4>
+            <h4 className="font-semibold mb-4 text-foreground">Resources</h4>
             <ul className="space-y-2">
-              {footerLinks.categories.map((link) => (
+              {footerLinks.resources.map((link) => (
                 <li key={link.path}>
-                  <Link href={link.path} className="text-sm text-muted-foreground hover:text-primary transition-colors" data-testid={`link-category-${link.label.toLowerCase().replace(/\s+/g, '-')}`}>
+                  <Link href={link.path} className="text-sm text-muted-foreground hover:text-primary transition-colors" data-testid={`link-resources-${link.label.toLowerCase().replace(/\s+/g, '-')}`}>
                     {link.label}
                   </Link>
                 </li>
@@ -100,13 +103,13 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Legal */}
+          {/* Categories */}
           <div>
-            <h4 className="font-semibold mb-4 text-foreground">Legal</h4>
+            <h4 className="font-semibold mb-4 text-foreground">Categories</h4>
             <ul className="space-y-2">
-              {footerLinks.legal.map((link) => (
+              {footerLinks.categories.map((link) => (
                 <li key={link.path}>
-                  <Link href={link.path} className="text-sm text-muted-foreground hover:text-primary transition-colors" data-testid={`link-legal-${link.label.toLowerCase().replace(/\s+/g, '-')}`}>
+                  <Link href={link.path} className="text-sm text-muted-foreground hover:text-primary transition-colors" data-testid={`link-category-${link.label.toLowerCase().replace(/\s+/g, '-')}`}>
                     {link.label}
                   </Link>
                 </li>
